@@ -63,8 +63,7 @@ ADDR  TEMP   RSSI |ADDR  TEMP   RSSI |ADDR  TEMP   RSSI |ADDR  TEMP   RSSI |
 
 ## Deployment
 
-For a commercial system, use the supplied makefile and source files from the Blue Gecko SDK to cross-compile for the desired platform.
-
+For a commercially deployed system (i.e. embedded gateway, etc.), use the supplied makefile and source files from the Blue Gecko SDK to cross-compile for the desired platform.
 
 ## Versioning
 
