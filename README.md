@@ -49,7 +49,7 @@ $ cd host-thermometer-client
 $ make https://github.com/kryoung-silabs/host-thermometer-client.git
 ```
 
-If using a zip archive with preserved paths, the extraction process is as follows:
+If using a zip archive with preserved paths relative to the Gecko SDK root, the extraction process is as follows:
 ```
 $ mkdir blue_gecko_sdk_v2p12p2
 $ unzip ble_2_12_2.tgz -d blue_gecko_sdk_v2p12p2
