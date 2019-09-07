@@ -323,8 +323,8 @@ void appHandleEvents(struct gecko_cmd_packet *evt)
           if ((TEMP_INVALID != connProperties[i].temperature) && (RSSI_INVALID != connProperties[i].rssi) ) {
             printf("%04x ", connProperties[i].serverAddress);
             printf("%2lu.%02lu",
-                   (connProperties[i].temperature / 1000),
-                   ((connProperties[i].temperature / 10) % 100));
+                   (long unsigned int)(connProperties[i].temperature / 1000),
+                   (long unsigned int)((connProperties[i].temperature / 10) % 100));
             printf("C ");
             printf("% 3d", connProperties[i].rssi);
             printf("dBm|");

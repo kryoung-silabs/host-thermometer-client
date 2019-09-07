@@ -19,7 +19,7 @@ This project can be built as supplied within the Blue Gecko SDK frameworks.
 
 #### For Cygwin/OSX/Linux with SDK installed
 
-Clone or copy the contents of this repository into the Blue Gecko SDK, into a subfolder of app/bluetooth/examples_ncp_host. Commands shown here are from OSX but will be similar in Linux/Cygwin.
+Clone or copy the contents of this repository into the Blue Gecko SDK, into a subfolder of app/bluetooth/examples_ncp_host. Commands shown here are from OSX using Gecko SDK Suite v2.6, but will be similar in Linux/Cygwin.
 
 ```
 $ cd /Applications/SimplicityStudiov4.app/Contents/Eclipse/developer/sdks/gecko_sdk_suite/v2.6/app/bluetooth/examples_ncp_host/
@@ -29,26 +29,37 @@ $ make
 
 #### For Raspberry Pi
 
-1. On the host with SDK installed, create a compressed file archive containing the required SDK source files.
+1. On the host with SDK installed, create a compressed file archive containing the required SDK source files (command line example here on OS X using Gecko SDK Suite v2.6).
 
 ```
+$ cd /Applications/SimplicityStudiov4.app/Contents/Eclipse/developer/sdks/gecko_sdk_suite/v2.6
 $ tar -cvf ble_2_12_2.tgz "protocol/bluetooth/ble_stack/inc" "protocol/bluetooth/ble_stack/src" "app/bluetooth/examples_ncp_host/common"
 ```
 
-2. Extract on the Raspberry Pi, cd to the new directory, and make.
+You can also create a zip archive including the same files/paths using your favorite Windows Zip tool (7zip, etc.). Make sure you preserve paths relative to the Gecko SDK root when creating the archive!
+
+2. Transfer archive to Raspberry Pi, extract, cd to the new directory, and make.
 
 ```
-$ tar -xvf ble_2_12_2.tgz blue_gecko_sdk_v2p12p2
+$ mkdir blue_gecko_sdk_v2p12p2
+$ tar -xvf ble_2_12_2.tgz -C blue_gecko_sdk_v2p12p2
 $ cd blue_gecko_sdk_v2p12p2/app/bluetooth/examples_ncp_host/
 $ git clone https://github.com/kryoung-silabs/host-thermometer-client.git
+$ cd host-thermometer-client
 $ make https://github.com/kryoung-silabs/host-thermometer-client.git
+```
+
+If using a zip archive with preserved paths, the extraction process is as follows:
+```
+$ mkdir blue_gecko_sdk_v2p12p2
+$ unzip ble_2_12_2.tgz -d blue_gecko_sdk_v2p12p2
 ```
 
 #### To Run
 Connect your Blue Gecko serial NCP device to the Raspberry Pi and launch the app, pointing to the correct serial port (WSTK virtual COM port in this example)
 
 ```
-$ ./exe/thermometer-client /dev/tty.usbmodem1411 115200 1
+$ ./exe/thermometer-client /dev/ttyACM0 115200 1
 Starting up...
 Resetting NCP target...
 
