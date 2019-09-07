@@ -1,6 +1,6 @@
 # host-thermometer-client
 
-This is a Linux/Posix host application version of the soc-thermometer-client example in the Silicon Labs Blue Gecko Bluetooth SDK for EFR32 devices. It communicates with a serial Blue Gecko NCP device, connects using BLE to devices implementing the soc-thermometer-server, and prints the RSSI and temperature readings from each server device when they arrive.
+This is a Linux/Posix BGAPI host application version of the soc-thermometer-client example in the Silicon Labs Blue Gecko Bluetooth SDK for EFR32 devices. It communicates with a serial Blue Gecko NCP device via BGAPI, connects using BLE to devices implementing the soc-thermometer-server, and prints the RSSI and temperature readings from each server device when they arrive.
 
 ## Getting Started
 
@@ -71,7 +71,7 @@ For the versions available, see the [tags on this repository](https://github.com
 
 ## Authors
 
-* **Kris Young** - *Initial work* - [Kris Young](https://github.com/kryoung-silabs)
+* **Kris Young** - *Initial work* - [Kris Young](https://github.com/kryoung-silabs) <kris.young@silabs.com>
 
 ## License
 
