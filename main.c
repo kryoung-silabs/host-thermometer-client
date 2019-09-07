@@ -156,6 +156,7 @@ static int appSerialPortInit(int argc, char* argv[], int32_t timeout)
    * Handle the command-line arguments.
    */
   baud_rate = default_baud_rate;
+  uart_port = default_uart_port;
   switch (argc) {
     case 4:
       flowcontrol = atoi(argv[3]);
