@@ -86,4 +86,4 @@ We use [SemVer](http://semver.org/) for versioning. For the versions available, 
 
 ## License
 
-This AS-IS EXAMPLE project is licensed under the standard Silicon Labs software license. See the [LICENSE.md](LICENSE.md) file for details
+This AS-IS example project is licensed under the standard Silicon Labs software license. See the [LICENSE.md](LICENSE.md) file for details
