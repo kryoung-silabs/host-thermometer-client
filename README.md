@@ -1,6 +1,6 @@
 # host-thermometer-client
 
-This is a Linux/Posix BGAPI host application version of the soc-thermometer-client example in the Silicon Labs Blue Gecko Bluetooth SDK for EFR32 devices. It communicates with a serial Blue Gecko NCP device via BGAPI, connects using BLE to devices implementing the soc-thermometer-server, and prints the RSSI and temperature readings from each server device when they arrive.
+This is a Linux/Posix BGAPI host application version of the soc-thermometer-client example in the Silicon Labs Blue Gecko Bluetooth SDK for EFR32 devices. It communicates with a serial Blue Gecko NCP device via BGAPI, connects using BLE to devices implementing (and advertising) the GATT server role of the Health Thermometer Profile, and prints the RSSI and temperature readings from each server device when they arrive.
 
 ## Getting Started
 
@@ -10,8 +10,8 @@ These instructions will get you a copy of the project up and running on your loc
 
 1. Blue Gecko SDK (installed via Simplicity Studio).
 2. Linux/Posix build environment (OSX, Cygwin, Raspberry Pi, etc.).
-3. Blue Gecko / Mighty Gecko device running a serial UART NCP (Network Co-Processor) firmware image.
-4. soc-thermometer server firmware running on one or more devices.
+3. Blue Gecko / Mighty Gecko device running a serial UART NCP (Network Co-Processor) firmware image. Instructions on how to implement this, both on custom hardware and on Silicon Labs wireless starter kit (WSTK) radio boards are provided in [AN1092: Using the Silicon Labs Bluetooth(R) Stack in Network Co-Processor Mode](https://www.silabs.com/documents/login/application-notes/an1042-bt-ncp-mode.pdf).
+4. One or more devices implementing (and advertising) the GATT server role of the Health Thermometer Profile. Silicon Labs provides pre-built and customizable versions of this firmware as the "SOC - Thermometer" example project that will run on Silicon Labs wireless starter kit (WSTK) radio boards. Instructions on how to build and run SiLabs Bluetooth example projects (including "SOC - Thermometer" is described in [QSG139: Getting Started with Bluetooth Software Development](https://www.silabs.com/documents/public/quick-start-guides/qsg139-getting-started-with-bluetooth.pdf).
 
 ### Installing
 
@@ -78,7 +78,7 @@ For a commercially deployed system (i.e. embedded gateway, etc.), use the suppli
 
 ## Versioning
 
-For the versions available, see the [tags on this repository](https://github.com/host-thermometer-client/tags).
+We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/host-thermometer-client/tags). All notable changes to this project will be documented in [CHANGELOG.md](CHANGELOG.md).
 
 ## Authors
 
