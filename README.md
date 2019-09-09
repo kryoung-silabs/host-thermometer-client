@@ -10,8 +10,8 @@ These instructions will get you a copy of the project up and running on your loc
 
 1. Blue Gecko SDK (installed via Simplicity Studio).
 2. Linux/Posix build environment (OSX, Cygwin, Raspberry Pi, etc.).
-3. Blue Gecko / Mighty Gecko device running a serial UART NCP (Network Co-Processor) firmware image. Instructions on how to implement this, both on custom hardware and on Silicon Labs wireless starter kit (WSTK) radio boards are provided in [AN1092: Using the Silicon Labs Bluetooth(R) Stack in Network Co-Processor Mode](https://www.silabs.com/documents/login/application-notes/an1042-bt-ncp-mode.pdf).
-4. One or more devices implementing (and advertising) the GATT server role of the Health Thermometer Profile. Silicon Labs provides pre-built and customizable versions of this firmware as the "SOC - Thermometer" example project that will run on Silicon Labs wireless starter kit (WSTK) radio boards. Instructions on how to build and run SiLabs Bluetooth example projects (including "SOC - Thermometer" is described in [QSG139: Getting Started with Bluetooth Software Development](https://www.silabs.com/documents/public/quick-start-guides/qsg139-getting-started-with-bluetooth.pdf).
+3. Blue Gecko / Mighty Gecko device running a serial UART NCP (Network Co-Processor) firmware image. See the "To Run" section below for more details.
+4. One or more devices implementing (and advertising) the GATT server role of the Health Thermometer Profile. See the "To Run" secton below for more details.
 
 ### Installing
 
@@ -56,7 +56,16 @@ $ unzip ble_2_12_2.tgz -d blue_gecko_sdk_v2p12p2
 ```
 
 #### To Run
-Connect your Blue Gecko serial NCP device to the Raspberry Pi and launch the app, pointing to the correct serial port (WSTK virtual COM port in this example)
+
+1. Program your NCP image "ncp-empty-target" into your target. Instructions on how to implement this, both on custom hardware and on Silicon Labs wireless starter kit (WSTK) radio boards are provided in [AN1092: Using the Silicon Labs Bluetooth(R) Stack in Network Co-Processor Mode](https://www.silabs.com/documents/login/application-notes/an1042-bt-ncp-mode.pdf).
+2. Prepare one or more devices running the soc-thermometer firmware or equivalent device implementing Health Thermometer service. Silicon Labs provides pre-built and customizable versions of this firmware as the "SOC - Thermometer" example project that will run on Silicon Labs wireless starter kit (WSTK) radio boards. Instructions on how to build and run SiLabs Bluetooth example projects (including "SOC - Thermometer" is described in [QSG139: Getting Started with Bluetooth Software Development](https://www.silabs.com/documents/public/quick-start-guides/qsg139-getting-started-with-bluetooth.pdf).
+3. Connect your Blue Gecko serial NCP device ("ncp-empty-target") to the target NCP device.
+4. Run the application, pointing to the correct serial port. The command line is:
+```
+Usage: thermometer-client <serial port> <baud rate> [flow control: 1(on, default) or 0(off)]
+```
+
+Here's an example using Raspberry Pi with the target NCP running on a WSTK radio board and connected to the Raspberry Pi via USB virtual COM port:
 
 ```
 $ ./exe/thermometer-client /dev/ttyACM0 115200 1
@@ -65,6 +74,7 @@ Resetting NCP target...
 
 BLE Central started
 ```
+
 If you have one or more soc-thermometer servers advertising, you will see a table with the RSSI and temperature reading from each.
 
 ```
