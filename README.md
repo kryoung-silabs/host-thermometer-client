@@ -59,7 +59,7 @@ $ unzip ble_2_12_2.tgz -d blue_gecko_sdk_v2p12p2
 
 1. Program your NCP image "ncp-empty-target" into your target. Instructions on how to implement this, both on custom hardware and on Silicon Labs wireless starter kit (WSTK) radio boards are provided in [AN1092: Using the Silicon Labs Bluetooth(R) Stack in Network Co-Processor Mode](https://www.silabs.com/documents/login/application-notes/an1042-bt-ncp-mode.pdf).
 2. Prepare one or more devices running the soc-thermometer firmware or equivalent device implementing Health Thermometer service. Silicon Labs provides pre-built and customizable versions of this firmware as the "SOC - Thermometer" example project that will run on Silicon Labs wireless starter kit (WSTK) radio boards. Instructions on how to build and run SiLabs Bluetooth example projects (including "SOC - Thermometer" is described in [QSG139: Getting Started with Bluetooth Software Development](https://www.silabs.com/documents/public/quick-start-guides/qsg139-getting-started-with-bluetooth.pdf).
-3. Connect your Blue Gecko serial NCP device ("ncp-empty-target") to the target NCP device.
+3. Connect your Blue Gecko serial NCP device ("ncp-empty-target") to the host (via USB, uart, etc.).
 4. Run the application, pointing to the correct serial port. The command line is:
 ```
 Usage: thermometer-client <serial port> <baud rate> [flow control: 1(on, default) or 0(off)]
