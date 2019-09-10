@@ -46,7 +46,7 @@ $ tar -xvf ble_2_12_2.tgz -C blue_gecko_sdk_v2p12p2
 $ cd blue_gecko_sdk_v2p12p2/app/bluetooth/examples_ncp_host/
 $ git clone https://github.com/kryoung-silabs/host-thermometer-client.git
 $ cd host-thermometer-client
-$ make https://github.com/kryoung-silabs/host-thermometer-client.git
+$ make
 ```
 
 If using a zip archive with preserved paths relative to the Gecko SDK root, the extraction process is as follows:
@@ -69,6 +69,16 @@ Here's an example using Raspberry Pi with the target NCP running on a WSTK radio
 
 ```
 $ ./exe/thermometer-client /dev/ttyACM0 115200 1
+Starting up...
+Resetting NCP target...
+
+BLE Central started
+```
+
+Here's a similar example using Cygwin:
+
+```
+$ ./exe/thermometer-client.exe COM43 115200 1
 Starting up...
 Resetting NCP target...
 
