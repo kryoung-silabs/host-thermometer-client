@@ -24,6 +24,7 @@ Clone or copy the contents of this repository into the Blue Gecko SDK, into a su
 ```
 $ cd /Applications/SimplicityStudiov4.app/Contents/Eclipse/developer/sdks/gecko_sdk_suite/v2.6/app/bluetooth/examples_ncp_host/
 $ git clone https://github.com/kryoung-silabs/host-thermometer-client.git
+$ cd host-thermometer-client
 $ make
 ```
 
