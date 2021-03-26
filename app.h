@@ -51,6 +51,14 @@ extern "C" {
 #define MAX_CONNECTIONS               4
 #endif
 
+#define USE_CODED_PHY 0     //1 to use coded phy, 0 to use 1mbps PHY
+
+#if USE_CODED_PHY == 1
+#define DEFAULT_PHY_TYPE le_gap_phy_coded
+#else
+#define DEFAULT_PHY_TYPE le_gap_phy_1m
+#endif
+
 /***********************************************************************************************//**
  * @addtogroup Application
  * @{
