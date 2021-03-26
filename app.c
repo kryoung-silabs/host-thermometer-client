@@ -43,6 +43,8 @@ const uint8_t thermoService[2] = { 0x09, 0x18 };
 // Temperature Measurement characteristic UUID defined by Bluetooth SIG
 const uint8_t thermoChar[2] = { 0x1c, 0x2a };
 
+enum le_gap_phy_type default_phy = DEFAULT_PHY_TYPE;
+
 // Init connection properties
 void initProperties(void)
 {
@@ -155,9 +157,9 @@ void appHandleEvents(struct gecko_cmd_packet *evt)
       appBooted = true;
       printf("\r\nBLE Central started\r\n");
         // Set passive scanning on 1Mb PHY
-        gecko_cmd_le_gap_set_discovery_type(le_gap_phy_1m, SCAN_PASSIVE);
+        gecko_cmd_le_gap_set_discovery_type(default_phy, SCAN_PASSIVE);
         // Set scan interval and scan window
-        gecko_cmd_le_gap_set_discovery_timing(le_gap_phy_1m, SCAN_INTERVAL, SCAN_WINDOW);
+        gecko_cmd_le_gap_set_discovery_timing(default_phy, SCAN_INTERVAL, SCAN_WINDOW);
         // Set the default connection parameters for subsequent connections
         gecko_cmd_le_gap_set_conn_timing_parameters(CONN_INTERVAL_MIN,
                                              CONN_INTERVAL_MAX,
@@ -166,7 +168,7 @@ void appHandleEvents(struct gecko_cmd_packet *evt)
                                              0,
                                              0xffff);
         // Start scanning - looking for thermometer devices
-        gecko_cmd_le_gap_start_discovery(le_gap_phy_1m, le_gap_discover_generic);
+        gecko_cmd_le_gap_start_discovery(default_phy, le_gap_discover_generic);
         connState = scanning;
         break;
 
@@ -176,8 +178,9 @@ void appHandleEvents(struct gecko_cmd_packet *evt)
       #if _DEBUG
         printf("Scan response received!\n");
       #endif
-        // Parse advertisement packets
-        if (evt->data.evt_le_gap_scan_response.packet_type == 0) {
+      // Parse advertisement packets - only look at connectable advertising 000b or 001b
+      if ((evt->data.evt_le_gap_scan_response.packet_type & 0x3) == 0 ||
+            (evt->data.evt_le_gap_scan_response.packet_type & 0x3) == 1 ) {
           // If a thermometer advertisement is found...
           if (findServiceInAdvertisement(&(evt->data.evt_le_gap_scan_response.data.data[0]),
                                          evt->data.evt_le_gap_scan_response.data.len) != 0) {
@@ -193,7 +196,7 @@ void appHandleEvents(struct gecko_cmd_packet *evt)
 #endif
               gecko_cmd_le_gap_connect(evt->data.evt_le_gap_scan_response.address,
                                        evt->data.evt_le_gap_scan_response.address_type,
-                                       le_gap_phy_1m);
+                                       default_phy);
               connState = opening;
             }
           }
@@ -270,7 +273,7 @@ void appHandleEvents(struct gecko_cmd_packet *evt)
           // and we can connect to more devices
           if (activeConnectionsNum < MAX_CONNECTIONS) {
             // start scanning again to find new devices
-            gecko_cmd_le_gap_start_discovery(le_gap_phy_1m, le_gap_discover_generic);
+            gecko_cmd_le_gap_start_discovery(default_phy, le_gap_discover_generic);
             connState = scanning;
           } else {
             connState = running;
@@ -287,7 +290,7 @@ void appHandleEvents(struct gecko_cmd_packet *evt)
           // remove connection from active connections
           removeConnection(evt->data.evt_le_connection_closed.connection);
           // start scanning again to find new devices
-          gecko_cmd_le_gap_start_discovery(le_gap_phy_1m, le_gap_discover_generic);
+          gecko_cmd_le_gap_start_discovery(default_phy, le_gap_discover_generic);
           connState = scanning;
         break;
 
