@@ -17,9 +17,9 @@ These instructions will get you a copy of the project up and running on your loc
 
 1. Clone or copy the contents of this repository. 
 2. Clone the Silicon Labs Gecko SDK (tested with GSDK 4.4.2). 
+3. Build with the makefile.
 
-Commands shown here are from OSX using Gecko SDK Suite v2.6, but will be similar in Linux/Cygwin.
-
+Here's a build ommand example using Raspberry Pi:
 ```
 $ git clone https://github.com/kryoung-silabs/host-thermometer-client.git
 $ git clone https://github.com/SiliconLabs/gecko_sdk.git
