@@ -2,7 +2,7 @@
 # General project settings                                                     #
 ################################################################################
 
-PROJECTNAME = host_thermometer_client
+PROJECTNAME = thermometer_client
 SDK_DIR = ../../../..
 
 
