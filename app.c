@@ -135,6 +135,8 @@ static void print_bluetooth_address(void);
 // Print RSSI and temperature values
 static void print_values(void);
 
+static uint8_t deinit_done = false;
+
 /**************************************************************************//**
  * Application Init.
  *****************************************************************************/
@@ -204,7 +206,13 @@ void app_process_action(void)
  *****************************************************************************/
 void app_deinit(void)
 {
-  ncp_host_deinit();
+  
+  // only try and deinit one time
+  if (deinit_done == false) {
+    deinit_done = true;
+      ncp_host_deinit();
+  }
+
 
   /////////////////////////////////////////////////////////////////////////////
   // Put your additional application deinit code here!                       //

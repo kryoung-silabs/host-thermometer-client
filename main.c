@@ -42,6 +42,9 @@ static void signal_handler(int sig)
 {
   (void)sig;
   run = false;
+  // Deinitialize the application.
+  app_deinit();
+
 }
 
 int main(int argc, char *argv[])
