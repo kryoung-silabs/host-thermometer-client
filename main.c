@@ -1,178 +1,75 @@
 /***************************************************************************//**
  * @file
- * @brief main.c
+ * @brief main() function.
  *******************************************************************************
  * # License
- * <b>Copyright 2018 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2021 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
- * The licensor of this software is Silicon Laboratories Inc. Your use of this
- * software is governed by the terms of Silicon Labs Master Software License
- * Agreement (MSLA) available at
- * www.silabs.com/about-us/legal/master-software-license-agreement. This
- * software is distributed to you in Source Code format and is governed by the
- * sections of the MSLA applicable to Source Code.
+ * SPDX-License-Identifier: Zlib
+ *
+ * The licensor of this software is Silicon Laboratories Inc.
+ *
+ * This software is provided 'as-is', without any express or implied
+ * warranty. In no event will the authors be held liable for any damages
+ * arising from the use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ * 1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ * 2. Altered source versions must be plainly marked as such, and must not be
+ *    misrepresented as being the original software.
+ * 3. This notice may not be removed or altered from any source distribution.
  *
  ******************************************************************************/
 
-/**
- * This an example application that demonstrates Bluetooth connectivity
- * using BGLIB C function definitions. The example enables Bluetooth advertisements
- * and connections.
- *
- * Most of the functionality in BGAPI uses a request-response-event pattern
- * where the module responds to a command with a command response indicating
- * it has processed the request and then later sending an event indicating
- * the requested operation has been completed. */
-
+#include <stdbool.h>
 #include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <errno.h>
-#include <string.h>
-#include <unistd.h>
-
-#include "infrastructure.h"
-
-/* BG stack headers */
-#include "gecko_bglib.h"
-
-/* hardware specific headers */
-#include "uart.h"
-
-/* application specific files */
+#include "system.h"
+#include "app_signal.h"
 #include "app.h"
 
-/***************************************************************************************************
- * Local Macros and Definitions
- **************************************************************************************************/
+// Main loop execution status.
+static volatile bool run = true;
 
-BGLIB_DEFINE();
-
-/** The default serial port to use for BGAPI communication. */
-#if ((_WIN32 == 1) || (__CYGWIN__ == 1))
-static char* default_uart_port = "COM0";
-#elif __APPLE__ == 1
-static char* default_uart_port = "/dev/tty.usbmodem1411";
-#elif __linux == 1
-static char* default_uart_port = "/dev/ttyACM0";
-#else
-static char* default_uart_port = "";
-#endif
-
-/** The default baud rate to use. */
-static uint32_t default_baud_rate = 115200;
-
-/** The serial port to use for BGAPI communication. */
-static char* uart_port = NULL;
-
-/** The baud rate to use. */
-static uint32_t baud_rate = 0;
-
-/** Usage string */
-#define USAGE "Usage: %s <serial port> <baud rate> [flow control: 1(on, default) or 0(off)]\n\n"
-
-/***************************************************************************************************
- * Static Function Declarations
- **************************************************************************************************/
-
-static int appSerialPortInit(int argc, char* argv[], int32_t timeout);
-static void on_message_send(uint32_t msg_len, uint8_t* msg_data);
-
-/***************************************************************************************************
- * Public Function Definitions
- **************************************************************************************************/
-
-/***********************************************************************************************//**
- *  \brief  The main program.
- *  \param[in] argc Argument count.
- *  \param[in] argv Buffer contaning Serial Port data.
- *  \return  0 on success, -1 on failure.
- **************************************************************************************************/
-int main(int argc, char* argv[])
+// Custom signal handler.
+static void signal_handler(int sig)
 {
-  struct gecko_cmd_packet* evt;
-
-  /* Initialize BGLIB with our output function for sending messages. */
-  BGLIB_INITIALIZE_NONBLOCK(on_message_send, uartRx, uartRxPeek);
-
-  /* Initialise serial communication as non-blocking. */
-  if (appSerialPortInit(argc, argv, 100) < 0) {
-    printf("Non-blocking serial port init failure\n");
-    exit(EXIT_FAILURE);
-  }
-
-  // Flush std output
-  fflush(stdout);
-
-  printf("Starting up...\nResetting NCP target...\n");
-
-  /* Reset NCP to ensure it gets into a defined state.
-   * Once the chip successfully boots, gecko_evt_system_boot_id event should be received. */
-  gecko_cmd_system_reset(0);
-
-  while (1) {
-    /* Check for stack event. */
-    evt = gecko_wait_event();
-    /* Run application and event handler. */
-    appHandleEvents(evt);
-  }
-
-  return -1;
+  (void)sig;
+  run = false;
 }
 
-/***************************************************************************************************
- * Static Function Definitions
- **************************************************************************************************/
-
-/***********************************************************************************************//**
- *  \brief  Function called when a message needs to be written to the serial port.
- *  \param[in] msg_len Length of the message.
- *  \param[in] msg_data Message data, including the header.
- **************************************************************************************************/
-static void on_message_send(uint32_t msg_len, uint8_t* msg_data)
+int main(int argc, char *argv[])
 {
-  /** Variable for storing function return values. */
-  int32_t ret;
+  // Set up custom signal handler for user interrupt and termination request.
+  app_signal(SIGINT, signal_handler);
+  app_signal(SIGTERM, signal_handler);
 
-  ret = uartTx(msg_len, msg_data);
-  if (ret < 0) {
-    printf("Failed to write to serial port %s, ret: %d, errno: %d\n", uart_port, ret, errno);
-    exit(EXIT_FAILURE);
-  }
-}
+  // Initialize Silicon Labs device, system, service(s) and protocol stack(s).
+  // Note that if the kernel is present, processing task(s) will be created by
+  // this call.
+  sl_system_init();
 
-/***********************************************************************************************//**
- *  \brief  Serial Port initialisation routine.
- *  \param[in] argc Argument count.
- *  \param[in] argv Buffer contaning Serial Port data.
- *  \return  0 on success, -1 on failure.
- **************************************************************************************************/
-static int appSerialPortInit(int argc, char* argv[], int32_t timeout)
-{
-  uint32_t flowcontrol = 1;
+  // Initialize the application. For example, create periodic timer(s) or
+  // task(s) if the kernel is present.
+  app_init(argc, argv);
 
-  /**
-   * Handle the command-line arguments.
-   */
-  baud_rate = default_baud_rate;
-  uart_port = default_uart_port;
-  switch (argc) {
-    case 4:
-      flowcontrol = atoi(argv[3]);
-    /** Falls through on purpose. */
-    case 3:
-      baud_rate = atoi(argv[2]);
-      uart_port = argv[1];
-    /** Falls through on purpose. */
-    default:
-      break;
-  }
-  if (!uart_port || !baud_rate || (flowcontrol > 1)) {
-    printf(USAGE, argv[0]);
-    exit(EXIT_FAILURE);
+  while (run) {
+    // Do not remove this call: Silicon Labs components process action routine
+    // must be called from the super loop.
+    sl_system_process_action();
+
+    // Application process.
+    app_process_action();
   }
 
-  /* Initialise the serial port with RTS/CTS enabled. */
-  return uartOpen((int8_t*)uart_port, baud_rate, flowcontrol, timeout);
+  // Deinitialize the application.
+  app_deinit();
+
+  return EXIT_SUCCESS;
 }

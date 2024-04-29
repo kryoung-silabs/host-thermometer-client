@@ -1,17 +1,30 @@
 /***************************************************************************//**
  * @file
- * @brief Application header file
+ * @brief Application interface provided to main().
  *******************************************************************************
  * # License
- * <b>Copyright 2018 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2021 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
- * The licensor of this software is Silicon Laboratories Inc. Your use of this
- * software is governed by the terms of Silicon Labs Master Software License
- * Agreement (MSLA) available at
- * www.silabs.com/about-us/legal/master-software-license-agreement. This
- * software is distributed to you in Source Code format and is governed by the
- * sections of the MSLA applicable to Source Code.
+ * SPDX-License-Identifier: Zlib
+ *
+ * The licensor of this software is Silicon Laboratories Inc.
+ *
+ * This software is provided 'as-is', without any express or implied
+ * warranty. In no event will the authors be held liable for any damages
+ * arising from the use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ * 1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ * 2. Altered source versions must be plainly marked as such, and must not be
+ *    misrepresented as being the original software.
+ * 3. This notice may not be removed or altered from any source distribution.
  *
  ******************************************************************************/
 
@@ -22,89 +35,23 @@
 extern "C" {
 #endif
 
-/***********************************************************************************************//**
- * \defgroup app Application Code
- * \brief Sample Application Implementation
- **************************************************************************************************/
+/**************************************************************************//**
+ * Application Init.
+ *****************************************************************************/
+void app_init(int argc, char *argv[]);
 
- //#define _DEBUG                        1 //uncomment for debug printing
- // connection parameters
- #define CONN_INTERVAL_MIN             80   //100ms
- #define CONN_INTERVAL_MAX             80   //100ms
- #define CONN_SLAVE_LATENCY            0    //no latency
- #define CONN_TIMEOUT                  100  //1000ms
+/**************************************************************************//**
+ * Application Process Action.
+ *****************************************************************************/
+void app_process_action(void);
 
- #define SCAN_INTERVAL                 16   //10ms
- #define SCAN_WINDOW                   16   //10ms
- #define SCAN_PASSIVE                  0
-
- #define TEMP_INVALID                  (uint32_t)0xFFFFFFFFu
- #define RSSI_INVALID                  (int8_t)127
- #define CONNECTION_HANDLE_INVALID     (uint8_t)0xFFu
- #define SERVICE_HANDLE_INVALID        (uint32_t)0xFFFFFFFFu
- #define CHARACTERISTIC_HANDLE_INVALID (uint16_t)0xFFFFu
- #define TABLE_INDEX_INVALID           (uint8_t)0xFFu
-
- #define EXT_SIGNAL_PRINT_RESULTS      0x01
-
-#ifndef MAX_CONNECTIONS
-#define MAX_CONNECTIONS               4
-#endif
-
-#define USE_CODED_PHY 0     //1 to use coded phy, 0 to use 1mbps PHY
-
-#if USE_CODED_PHY == 1
-#define DEFAULT_PHY_TYPE le_gap_phy_coded
-#else
-#define DEFAULT_PHY_TYPE le_gap_phy_1m
-#endif
-
-/***********************************************************************************************//**
- * @addtogroup Application
- * @{
- **************************************************************************************************/
-
-/***********************************************************************************************//**
- * @addtogroup app
- * @{
- **************************************************************************************************/
-
-/***************************************************************************************************
- * Type Definitions
- **************************************************************************************************/
- typedef enum {
-   scanning,
-   opening,
-   discoverServices,
-   discoverCharacteristics,
-   enableIndication,
-   running
- } ConnState;
-
- typedef struct {
-   uint8_t  connectionHandle;
-   int8_t   rssi;
-   uint16_t serverAddress;
-   uint32_t thermometerServiceHandle;
-   uint16_t thermometerCharacteristicHandle;
-   uint32_t temperature;
- } ConnProperties;
-
-/***************************************************************************************************
- * Function Declarations
- **************************************************************************************************/
-
-/***********************************************************************************************//**
- *  \brief  Handle application events.
- *  \param[in]  evt  incoming event ID
- **************************************************************************************************/
-void appHandleEvents(struct gecko_cmd_packet *evt);
-
-/** @} (end addtogroup app) */
-/** @} (end addtogroup Application) */
+/**************************************************************************//**
+ * Application Deinit.
+ *****************************************************************************/
+void app_deinit(void);
 
 #ifdef __cplusplus
 };
 #endif
 
-#endif /* APP_H */
+#endif // APP_H

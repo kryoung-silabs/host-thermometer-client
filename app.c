@@ -1,346 +1,241 @@
 /***************************************************************************//**
  * @file
- * @brief Event handling and application code for Empty NCP Host application example
+ * @brief Empty NCP-host Example Project.
+ *
+ * Reference implementation of an NCP (Network Co-Processor) host, which is
+ * typically run on a central MCU without radio. It can connect to an NCP via
+ * VCOM to access the Bluetooth stack of the NCP and to control it using BGAPI.
  *******************************************************************************
  * # License
- * <b>Copyright 2018 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2021 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
- * The licensor of this software is Silicon Laboratories Inc. Your use of this
- * software is governed by the terms of Silicon Labs Master Software License
- * Agreement (MSLA) available at
- * www.silabs.com/about-us/legal/master-software-license-agreement. This
- * software is distributed to you in Source Code format and is governed by the
- * sections of the MSLA applicable to Source Code.
+ * SPDX-License-Identifier: Zlib
+ *
+ * The licensor of this software is Silicon Laboratories Inc.
+ *
+ * This software is provided 'as-is', without any express or implied
+ * warranty. In no event will the authors be held liable for any damages
+ * arising from the use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ * 1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ * 2. Altered source versions must be plainly marked as such, and must not be
+ *    misrepresented as being the original software.
+ * 3. This notice may not be removed or altered from any source distribution.
  *
  ******************************************************************************/
-
-/* standard library headers */
-#include <stdint.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdbool.h>
+#include <stdlib.h>
 #include <unistd.h>
-
-/* BG stack headers */
-#include "bg_types.h"
-#include "gecko_bglib.h"
-
-/* Own header */
 #include "app.h"
+#include "gatt_db.h"
+#include "ncp_host.h"
+#include "app_log.h"
+#include "app_log_cli.h"
+#include "app_assert.h"
+#include "sl_bt_api.h"
 
-// App booted flag
-static bool appBooted = false;
+// Optstring argument for getopt.
+#define OPTSTRING      NCP_HOST_OPTSTRING APP_LOG_OPTSTRING "hR"
 
-// Array for holding properties of multiple (parallel) connections
-ConnProperties connProperties[MAX_CONNECTIONS];
-// Counter of active connections
-uint8_t activeConnectionsNum;
-// State of the connection under establishment
-ConnState connState;
-// Health Thermometer service UUID defined by Bluetooth SIG
-const uint8_t thermoService[2] = { 0x09, 0x18 };
-// Temperature Measurement characteristic UUID defined by Bluetooth SIG
-const uint8_t thermoChar[2] = { 0x1c, 0x2a };
+// Usage info.
+#define USAGE          APP_LOG_NL "%s " NCP_HOST_USAGE APP_LOG_USAGE " [-h]" APP_LOG_NL
 
-enum le_gap_phy_type default_phy = DEFAULT_PHY_TYPE;
+// Options info.
+#define OPTIONS    \
+  "\nOPTIONS\n"    \
+  NCP_HOST_OPTIONS \
+  APP_LOG_OPTIONS  \
+  "    -h  Print this help message.\n"
 
-// Init connection properties
-void initProperties(void)
+// The advertising set handle allocated from Bluetooth stack.
+static uint8_t advertising_set_handle = 0xff;
+
+/**************************************************************************//**
+ * Application Init.
+ *****************************************************************************/
+void app_init(int argc, char *argv[])
 {
-  uint8_t i;
-  activeConnectionsNum = 0;
+  sl_status_t sc;
+  int opt;
 
-  for (i = 0; i < MAX_CONNECTIONS; i++) {
-    connProperties[i].connectionHandle = CONNECTION_HANDLE_INVALID;
-    connProperties[i].thermometerServiceHandle = SERVICE_HANDLE_INVALID;
-    connProperties[i].thermometerCharacteristicHandle = CHARACTERISTIC_HANDLE_INVALID;
-    connProperties[i].temperature = TEMP_INVALID;
-    connProperties[i].rssi = RSSI_INVALID;
-  }
-}
+  // Process command line options.
+  while ((opt = getopt(argc, argv, OPTSTRING)) != -1) {
+    switch (opt) {
+      // Print help.
+      case 'h':
+        app_log(USAGE, argv[0]);
+        app_log(OPTIONS);
+        exit(EXIT_SUCCESS);
 
-// Parse advertisements looking for advertised Health Thermometer service
-uint8_t findServiceInAdvertisement(uint8_t *data, uint8_t len)
-{
-  uint8_t adFieldLength;
-  uint8_t adFieldType;
-  uint8_t i = 0;
-  // Parse advertisement packet
-  while (i < len) {
-    adFieldLength = data[i];
-    adFieldType = data[i + 1];
-    // Partial ($02) or complete ($03) list of 16-bit UUIDs
-    if (adFieldType == 0x02 || adFieldType == 0x03) {
-      // compare UUID to Health Thermometer service UUID
-      if (memcmp(&data[i + 2], thermoService, 2) == 0) {
-        return 1;
-      }
-    }
-    // advance to the next AD struct
-    i = i + adFieldLength + 1;
-  }
-  return 0;
-}
+      case 'R':
+        app_log("Deprecated option: -R" APP_LOG_NL);
+        break;
 
-// Find the index of a given connection in the connection_properties array
-uint8_t findIndexByConnectionHandle(uint8_t connection)
-{
-  for (uint8_t i = 0; i < activeConnectionsNum; i++) {
-    if (connProperties[i].connectionHandle == connection) {
-      return i;
+      // Process options for other modules.
+      default:
+        sc = ncp_host_set_option((char)opt, optarg);
+        if (sc == SL_STATUS_NOT_FOUND) {
+          sc = app_log_set_option((char)opt, optarg);
+        }
+        if (sc != SL_STATUS_OK) {
+          app_log(USAGE, argv[0]);
+          exit(EXIT_FAILURE);
+        }
+        break;
     }
   }
-  return TABLE_INDEX_INVALID;
+
+  // Initialize NCP connection.
+  sc = ncp_host_init();
+  if (sc == SL_STATUS_INVALID_PARAMETER) {
+    app_log(USAGE, argv[0]);
+    exit(EXIT_FAILURE);
+  }
+  app_assert_status(sc);
+  app_log_info("NCP host initialised." APP_LOG_NL);
+  app_log_info("Press Crtl+C to quit" APP_LOG_NL APP_LOG_NL);
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Put your additional application init code here!                         //
+  // This is called once during start-up.                                    //
+  /////////////////////////////////////////////////////////////////////////////
 }
 
-// Add a new connection to the connection_properties array
-void addConnection(uint8_t connection, uint16_t address)
+/**************************************************************************//**
+ * Application Process Action.
+ *****************************************************************************/
+void app_process_action(void)
 {
-  connProperties[activeConnectionsNum].connectionHandle = connection;
-  connProperties[activeConnectionsNum].serverAddress    = address;
-  activeConnectionsNum++;
+  /////////////////////////////////////////////////////////////////////////////
+  // Put your additional application code here!                              //
+  // This is called infinitely.                                              //
+  // Do not call blocking functions from here!                               //
+  /////////////////////////////////////////////////////////////////////////////
 }
 
-// Remove a connection from the connection_properties array
-void removeConnection(uint8_t connection)
+/**************************************************************************//**
+ * Application Deinit.
+ *****************************************************************************/
+void app_deinit(void)
 {
-  uint8_t i;
-  uint8_t table_index = findIndexByConnectionHandle(connection);
+  ncp_host_deinit();
 
-  if (activeConnectionsNum > 0) {
-    activeConnectionsNum--;
-  }
-  // Shift entries after the removed connection toward 0 index
-  for (i = table_index; i < activeConnectionsNum; i++) {
-    connProperties[i] = connProperties[i + 1];
-  }
-  // Clear the slots we've just removed so no junk values appear
-  for (i = activeConnectionsNum; i < MAX_CONNECTIONS; i++) {
-    connProperties[i].connectionHandle = CONNECTION_HANDLE_INVALID;
-    connProperties[i].thermometerServiceHandle = SERVICE_HANDLE_INVALID;
-    connProperties[i].thermometerCharacteristicHandle = CHARACTERISTIC_HANDLE_INVALID;
-    connProperties[i].temperature = TEMP_INVALID;
-    connProperties[i].rssi = RSSI_INVALID;
-  }
+  /////////////////////////////////////////////////////////////////////////////
+  // Put your additional application deinit code here!                       //
+  // This is called once during termination.                                 //
+  /////////////////////////////////////////////////////////////////////////////
 }
 
-/***********************************************************************************************//**
- *  \brief  Event handler function.
- *  \param[in] evt Event pointer.
- **************************************************************************************************/
-void appHandleEvents(struct gecko_cmd_packet *evt)
+/**************************************************************************//**
+ * Bluetooth stack event handler.
+ * This overrides the dummy weak implementation.
+ *
+ * @param[in] evt Event coming from the Bluetooth stack.
+ *****************************************************************************/
+void sl_bt_on_event(sl_bt_msg_t *evt)
 {
-  static uint8_t i;
-  static bool printHeader = true;
-  static uint8_t* charValue;
-  static uint16_t addrValue;
-  static uint8_t tableIndex;
-  if (NULL == evt) {
-    return;
-  }
+  sl_status_t sc;
+  bd_addr address;
+  uint8_t address_type;
+  uint8_t system_id[8];
 
-  // Do not handle any events until system is booted up properly.
-  if ((BGLIB_MSG_ID(evt->header) != gecko_evt_system_boot_id)
-      && !appBooted) {
-#if defined(DEBUG)
-    printf("Event: 0x%04x\n", BGLIB_MSG_ID(evt->header));
-#endif
-    usleep(50000);
-    return;
-  }
+  switch (SL_BT_MSG_ID(evt->header)) {
+    // -------------------------------
+    // This event indicates the device has started and the radio is ready.
+    // Do not call any stack command before receiving this boot event!
+    case sl_bt_evt_system_boot_id:
+      // Extract unique ID from BT Address.
+      sc = sl_bt_system_get_identity_address(&address, &address_type);
+      app_assert_status(sc);
+      app_log_info("Bluetooth %s address: %02X:%02X:%02X:%02X:%02X:%02X" APP_LOG_NL,
+                   address_type ? "static random" : "public device",
+                   address.addr[5],
+                   address.addr[4],
+                   address.addr[3],
+                   address.addr[2],
+                   address.addr[1],
+                   address.addr[0]);
 
-  /* Handle events */
-  switch (BGLIB_MSG_ID(evt->header)) {
-    case gecko_evt_system_boot_id:
+      // Pad and reverse unique ID to get System ID.
+      system_id[0] = address.addr[5];
+      system_id[1] = address.addr[4];
+      system_id[2] = address.addr[3];
+      system_id[3] = 0xFF;
+      system_id[4] = 0xFE;
+      system_id[5] = address.addr[2];
+      system_id[6] = address.addr[1];
+      system_id[7] = address.addr[0];
 
-      appBooted = true;
-      printf("\r\nBLE Central started\r\n");
-        // Set passive scanning on 1Mb PHY
-        gecko_cmd_le_gap_set_discovery_type(default_phy, SCAN_PASSIVE);
-        // Set scan interval and scan window
-        gecko_cmd_le_gap_set_discovery_timing(default_phy, SCAN_INTERVAL, SCAN_WINDOW);
-        // Set the default connection parameters for subsequent connections
-        gecko_cmd_le_gap_set_conn_timing_parameters(CONN_INTERVAL_MIN,
-                                             CONN_INTERVAL_MAX,
-                                             CONN_SLAVE_LATENCY,
-                                             CONN_TIMEOUT,
-                                             0,
-                                             0xffff);
-        // Start scanning - looking for thermometer devices
-        gecko_cmd_le_gap_start_discovery(default_phy, le_gap_discover_generic);
-        connState = scanning;
-        break;
+      sc = sl_bt_gatt_server_write_attribute_value(gattdb_system_id,
+                                                   0,
+                                                   sizeof(system_id),
+                                                   system_id);
+      app_assert_status(sc);
 
-      // This event is generated when an advertisement packet or a scan response
-      // is received from a slave
-      case gecko_evt_le_gap_scan_response_id:
-      #if _DEBUG
-        printf("Scan response received!\n");
-      #endif
-      // Parse advertisement packets - only look at connectable advertising 000b or 001b
-      if ((evt->data.evt_le_gap_scan_response.packet_type & 0x3) == 0 ||
-            (evt->data.evt_le_gap_scan_response.packet_type & 0x3) == 1 ) {
-          // If a thermometer advertisement is found...
-          if (findServiceInAdvertisement(&(evt->data.evt_le_gap_scan_response.data.data[0]),
-                                         evt->data.evt_le_gap_scan_response.data.len) != 0) {
-#if _DEBUG
-            printf("Found device\n");
-#endif
-            // then stop scanning for a while
-            gecko_cmd_le_gap_end_procedure();
-            // and connect to that device
-            if (activeConnectionsNum < MAX_CONNECTIONS) {
-#if _DEBUG
-            printf("Connecting\n");
-#endif
-              gecko_cmd_le_gap_connect(evt->data.evt_le_gap_scan_response.address,
-                                       evt->data.evt_le_gap_scan_response.address_type,
-                                       default_phy);
-              connState = opening;
-            }
-          }
-        }
-        break;
+      // Create an advertising set.
+      sc = sl_bt_advertiser_create_set(&advertising_set_handle);
+      app_assert_status(sc);
 
-      // This event is generated when a new connection is established
-      case gecko_evt_le_connection_opened_id:
-      #if _DEBUG
-          printf("Connection opened\n");
-      #endif
-        // Get last two bytes of sender address
-        addrValue = (uint16_t)(evt->data.evt_le_connection_opened.address.addr[1] << 8) \
-                    + evt->data.evt_le_connection_opened.address.addr[0];
-        // Add connection to the connection_properties array
-        addConnection(evt->data.evt_le_connection_opened.connection, addrValue);
-        // Discover Health Thermometer service on the slave device
-        gecko_cmd_gatt_discover_primary_services_by_uuid(evt->data.evt_le_connection_opened.connection,
-                                                         2,
-                                                         (const uint8_t*)thermoService);
-        connState = discoverServices;
-        break;
+      // Generate data for advertising
+      sc = sl_bt_legacy_advertiser_generate_data(advertising_set_handle,
+                                                 sl_bt_advertiser_general_discoverable);
+      app_assert(sc == SL_STATUS_OK,
+                 "[E: 0x%04x] Failed to generate advertising data\n",
+                 (int)sc);
 
-      // This event is generated when a new service is discovered
-      case gecko_evt_gatt_service_id:
-        tableIndex = findIndexByConnectionHandle(evt->data.evt_gatt_service.connection);
-        if (tableIndex != TABLE_INDEX_INVALID) {
-          // Save service handle for future reference
-          connProperties[tableIndex].thermometerServiceHandle = evt->data.evt_gatt_service.service;
-        }
-        break;
+      // Set advertising interval to 100ms.
+      sc = sl_bt_advertiser_set_timing(
+        advertising_set_handle,
+        160, // min. adv. interval (milliseconds * 1.6)
+        160, // max. adv. interval (milliseconds * 1.6)
+        0,   // adv. duration
+        0);  // max. num. adv. events
+      app_assert_status(sc);
+      // Start general advertising and enable connections.
+      sc = sl_bt_legacy_advertiser_start(advertising_set_handle,
+                                         sl_bt_legacy_advertiser_connectable);
+      app_assert_status(sc);
+      app_log_info("Started advertising." APP_LOG_NL);
+      break;
 
-      // This event is generated when a new characteristic is discovered
-      case gecko_evt_gatt_characteristic_id:
-        tableIndex = findIndexByConnectionHandle(evt->data.evt_gatt_characteristic.connection);
-        if (tableIndex != TABLE_INDEX_INVALID) {
-          // Save characteristic handle for future reference
-          connProperties[tableIndex].thermometerCharacteristicHandle = evt->data.evt_gatt_characteristic.characteristic;
-        }
-        break;
+    // -------------------------------
+    // This event indicates that a new connection was opened.
+    case sl_bt_evt_connection_opened_id:
+      app_log_info("Connection opened." APP_LOG_NL);
+      break;
 
-      // This event is generated for various procedure completions, e.g. when a
-      // write procedure is completed, or service discovery is completed
-      case gecko_evt_gatt_procedure_completed_id:
-        tableIndex = findIndexByConnectionHandle(evt->data.evt_gatt_procedure_completed.connection);
-        if (tableIndex == TABLE_INDEX_INVALID) {
-          break;
-        }
-        // If service discovery finished
-        if (connState == discoverServices \
-            && connProperties[tableIndex].thermometerServiceHandle != SERVICE_HANDLE_INVALID) {
-          // Discover thermometer characteristic on the slave device
-          gecko_cmd_gatt_discover_characteristics_by_uuid(evt->data.evt_gatt_procedure_completed.connection,
-                                                          connProperties[tableIndex].thermometerServiceHandle,
-                                                          2,
-                                                          (const uint8_t*)thermoChar);
-          connState = discoverCharacteristics;
-          break;
-        }
-        // If characteristic discovery finished
-        if (connState == discoverCharacteristics \
-            && connProperties[tableIndex].thermometerCharacteristicHandle != CHARACTERISTIC_HANDLE_INVALID) {
-          // stop discovering
-          gecko_cmd_le_gap_end_procedure();
-          // enable indications
-          gecko_cmd_gatt_set_characteristic_notification(evt->data.evt_gatt_procedure_completed.connection,
-                                                         connProperties[tableIndex].thermometerCharacteristicHandle,
-                                                         gatt_indication);
-          connState = enableIndication;
-          break;
-        }
-        // If indication enable process finished
-        if (connState == enableIndication) {
-          // and we can connect to more devices
-          if (activeConnectionsNum < MAX_CONNECTIONS) {
-            // start scanning again to find new devices
-            gecko_cmd_le_gap_start_discovery(default_phy, le_gap_discover_generic);
-            connState = scanning;
-          } else {
-            connState = running;
-          }
-          break;
-        }
-        break;
+    // -------------------------------
+    // This event indicates that a connection was closed.
+    case sl_bt_evt_connection_closed_id:
+      app_log_info("Connection closed." APP_LOG_NL);
 
-      // This event is generated when a connection is dropped
-      case gecko_evt_le_connection_closed_id:
-      #if _DEBUG
-          printf("Connection closed\n");
-      #endif
-          // remove connection from active connections
-          removeConnection(evt->data.evt_le_connection_closed.connection);
-          // start scanning again to find new devices
-          gecko_cmd_le_gap_start_discovery(default_phy, le_gap_discover_generic);
-          connState = scanning;
-        break;
+      // Generate data for advertising
+      sc = sl_bt_legacy_advertiser_generate_data(advertising_set_handle,
+                                                 sl_bt_advertiser_general_discoverable);
+      app_assert(sc == SL_STATUS_OK,
+                 "[E: 0x%04x] Failed to generate advertising data\n",
+                 (int)sc);
 
-      // This event is generated when a characteristic value was received e.g. an indication
-      case gecko_evt_gatt_characteristic_value_id:
-      #if _DEBUG
-          printf("Char value found\n");
-      #endif
-        charValue = &(evt->data.evt_gatt_characteristic_value.value.data[0]);
-        tableIndex = findIndexByConnectionHandle(evt->data.evt_gatt_characteristic_value.connection);
-        if (tableIndex != TABLE_INDEX_INVALID) {
-          connProperties[tableIndex].temperature = (charValue[1] << 0) + (charValue[2] << 8) + (charValue[3] << 16);
-        }
-        // Send confirmation for the indication
-        gecko_cmd_gatt_send_characteristic_confirmation(evt->data.evt_gatt_characteristic_value.connection);
-        // Trigger RSSI measurement on the connection
-        gecko_cmd_le_connection_get_rssi(evt->data.evt_gatt_characteristic_value.connection);
-        break;
+      // Restart advertising after client has disconnected.
+      sc = sl_bt_legacy_advertiser_start(advertising_set_handle,
+                                         sl_bt_legacy_advertiser_connectable);
+      app_assert_status(sc);
+      app_log_info("Started advertising." APP_LOG_NL);
+      break;
 
-      // This event is generated when RSSI value was measured
-      case gecko_evt_le_connection_rssi_id:
-      #if _DEBUG
-          printf("Received RSSI\n");
-      #endif
-        tableIndex = findIndexByConnectionHandle(evt->data.evt_le_connection_rssi.connection);
-        if (tableIndex != TABLE_INDEX_INVALID) {
-          connProperties[tableIndex].rssi = evt->data.evt_le_connection_rssi.rssi;
-        }
-        //print results
-        if (true == printHeader) {
-          printHeader = false;
-          printf("ADDR  TEMP   RSSI |ADDR  TEMP   RSSI |ADDR  TEMP   RSSI |ADDR  TEMP   RSSI |\r\n");
-        }
-        for (i = 0u; i < MAX_CONNECTIONS; i++) {
-          if ((TEMP_INVALID != connProperties[i].temperature) && (RSSI_INVALID != connProperties[i].rssi) ) {
-            printf("%04x ", connProperties[i].serverAddress);
-            printf("%2lu.%02lu",
-                   (long unsigned int)(connProperties[i].temperature / 1000),
-                   (long unsigned int)((connProperties[i].temperature / 10) % 100));
-            printf("C ");
-            printf("% 3d", connProperties[i].rssi);
-            printf("dBm|");
-          } else {
-            printf("---- ------ ------|");
-          }
-        }
-        printf("\r");
-        fflush(stdout); //flush output buffer
-        break;
+    ///////////////////////////////////////////////////////////////////////////
+    // Add additional event handlers here as your application requires!      //
+    ///////////////////////////////////////////////////////////////////////////
 
+    // -------------------------------
+    // Default event handler.
     default:
       break;
   }
